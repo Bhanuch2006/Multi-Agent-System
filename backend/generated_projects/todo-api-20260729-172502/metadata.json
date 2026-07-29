@@ -1,0 +1,19 @@
+{
+  "project_name": "Todo API",
+  "tasks": [
+    "Clarify the project scope and core backend requirements",
+    "Generate the FastAPI backend template and supporting files",
+    "Review the generated code for security and quality issues"
+  ],
+  "architecture": "User request -> Supervisor -> Coder -> Reviewer -> Persisted project bundle",
+  "review": {
+    "verdict": "approved",
+    "needs_revision": false,
+    "findings": [],
+    "suggestions": [
+      "No blocking issues found."
+    ]
+  },
+  "revision_count": 2,
+  "user_request": "Build a FastAPI Todo API with JWT authentication"
+}

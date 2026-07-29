@@ -9,6 +9,21 @@ class GenerateRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=8000)
 
 
+class ArchitecturePlan(BaseModel):
+    backend: str
+    database: str
+    authentication: str
+    orm: str
+    pattern: str
+    folder_structure: str
+    notes: list[str] = Field(default_factory=list)
+
+
+class ResearchReport(BaseModel):
+    notes: list[str] = Field(default_factory=list)
+    sources: list[str] = Field(default_factory=list)
+
+
 class ReviewReport(BaseModel):
     verdict: str
     needs_revision: bool
@@ -16,15 +31,29 @@ class ReviewReport(BaseModel):
     suggestions: list[str]
 
 
-class GenerateResponse(BaseModel):
+class GenerateResult(BaseModel):
     status: str
     project_name: str
-    architecture: str
-    tasks: list[str]
+    task_list: list[str]
+    architecture: ArchitecturePlan
+    research: ResearchReport
     project_files: dict[str, str]
     review: ReviewReport
+    documentation: str
     revision_count: int
     artifact_path: str | None = None
     bundle_markdown: str
     final_summary: str
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class GenerateJobResponse(BaseModel):
+    job_id: str
+    status: str
+    current_agent: str
+    progress: int
+
+
+class JobStatusResponse(GenerateJobResponse):
+    result: GenerateResult | None = None
+    error: str | None = None

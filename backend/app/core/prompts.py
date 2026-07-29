@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.core.config import settings
+from backend.app.core.config import settings
 
 
 def load_prompt(name: str) -> str:
