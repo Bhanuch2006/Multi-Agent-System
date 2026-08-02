@@ -46,3 +46,22 @@ def persist_artifacts(
     (artifact_dir / "bundle.md").write_text(bundle_markdown, encoding="utf-8")
     (artifact_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     return artifact_dir
+
+
+def list_artifacts(base_dir: Path) -> list[Path]:
+    if not base_dir.exists():
+        return []
+    return [p for p in base_dir.iterdir() if p.is_dir()]
+
+
+def zip_artifact(artifact_dir: Path) -> Path:
+    # create a zip archive of the artifact directory
+    import shutil
+
+    base = artifact_dir.parent
+    name = artifact_dir.name
+    archive_path = base / f"{name}.zip"
+    if archive_path.exists():
+        archive_path.unlink()
+    shutil.make_archive(str(base / name), "zip", root_dir=str(artifact_dir))
+    return archive_path

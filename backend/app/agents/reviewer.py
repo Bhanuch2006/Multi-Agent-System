@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from datetime import datetime
+from time import perf_counter
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
@@ -10,6 +12,7 @@ from backend.app.core.config import settings
 from backend.app.core.json_utils import parse_json_object
 from backend.app.core.prompts import load_prompt
 from backend.app.graph.state import AgentState
+from backend.app.models.agents import ReviewOutput, AgentMessage, AgentMetrics
 
 
 def _fallback_review(state: AgentState) -> dict[str, object]:
@@ -30,19 +33,13 @@ def _fallback_review(state: AgentState) -> dict[str, object]:
         findings.append("Documentation was not generated yet.")
         suggestions.append("Add a README in the documentation step.")
 
-    if findings:
-        return {
-            "verdict": "needs_revision",
-            "needs_revision": True,
-            "findings": findings,
-            "suggestions": suggestions,
-        }
-
+    score = 100 - len(findings) * 10
+    approved = score >= 90
     return {
-        "verdict": "approved",
-        "needs_revision": False,
-        "findings": [],
-        "suggestions": ["No blocking issues found."],
+        "score": score,
+        "approved": approved,
+        "findings": findings,
+        "suggestions": suggestions or (["No blocking issues found."] if approved else suggestions),
     }
 
 
@@ -53,7 +50,8 @@ class ReviewerAgent:
 
     def run(self, state: AgentState) -> dict[str, object]:
         project_files = dict(state.get("project_files", {}))
-
+        start = perf_counter()
+        start_time = datetime.utcnow()
         if settings.groq_api_key:
             prompt = load_prompt("reviewer")
             payload_text = json.dumps(
@@ -73,11 +71,35 @@ class ReviewerAgent:
         else:
             payload = _fallback_review(state)
 
+        end = perf_counter()
+        end_time = datetime.utcnow()
+
+        review = ReviewOutput.model_validate(payload)
+
+        messages = []
+        if not review.approved:
+            # send a high-priority message to FixAgent/Coder
+            messages.append(
+                AgentMessage(
+                    from_agent="Reviewer",
+                    to_agent="FixAgent",
+                    priority="high",
+                    message="Issues found: " + "; ".join(review.findings),
+                    timestamp=start_time,
+                ).model_dump()
+            )
+
+        metrics = AgentMetrics(
+            agent="Reviewer",
+            start_time=start_time,
+            end_time=end_time,
+            tokens=0,
+            cost=0.0,
+            latency=end - start,
+        ).model_dump()
+
         return {
-            "review": {
-                "verdict": str(payload.get("verdict", "needs_revision")),
-                "needs_revision": bool(payload.get("needs_revision", False)),
-                "findings": list(payload.get("findings", [])),
-                "suggestions": list(payload.get("suggestions", [])),
-            }
+            "review": review.model_dump(),
+            "messages": messages,
+            "metrics": metrics,
         }

@@ -25,3 +25,5 @@ class AgentState(TypedDict, total=False):
     current_agent: str
     progress: int
     status: str
+    messages: list[dict]
+    metrics: list[dict]
