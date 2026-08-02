@@ -20,7 +20,7 @@ class EventStore:
             # append to a file for durability
             log_file = self.base_dir / f"{job_id}.events.jsonl"
             with log_file.open("a", encoding="utf-8") as fh:
-                fh.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), **event}) + "\n")
+                fh.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), **event}, default=str) + "\n")
 
     def get(self, job_id: str) -> List[dict[str, Any]]:
         with self._lock:

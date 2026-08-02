@@ -27,6 +27,8 @@ class ResearchReport(BaseModel):
 class ReviewReport(BaseModel):
     verdict: str
     needs_revision: bool
+    overall_score: int = 0
+    category_scores: dict[str, int] = Field(default_factory=dict)
     findings: list[str]
     suggestions: list[str]
 
@@ -39,11 +41,17 @@ class GenerateResult(BaseModel):
     research: ResearchReport
     project_files: dict[str, str]
     review: ReviewReport
+    execution: dict[str, Any] = Field(default_factory=dict)
+    testing: dict[str, Any] = Field(default_factory=dict)
     documentation: str
     revision_count: int
     artifact_path: str | None = None
     bundle_markdown: str
     final_summary: str
+    graph: dict[str, Any] = Field(default_factory=dict)
+    node_status: dict[str, str] = Field(default_factory=dict)
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+    metrics: list[dict[str, Any]] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

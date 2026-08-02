@@ -32,8 +32,8 @@ def _infer_project_name(user_request: str) -> str:
 
 @dataclass
 class SupervisorAgent:
-    def _client(self) -> ChatGroq:
-        return ChatGroq(model=settings.groq_model, groq_api_key=settings.groq_api_key, temperature=0)
+    def _client(self, model_name: str) -> ChatGroq:
+        return ChatGroq(model=model_name, groq_api_key=settings.groq_api_key, temperature=0)
 
     def _fallback(self, user_request: str) -> dict[str, object]:
         project_name = _infer_project_name(user_request)
@@ -54,10 +54,11 @@ class SupervisorAgent:
 
     def run(self, state: AgentState) -> dict[str, object]:
         user_request = state["user_request"]
+        model_name = str(state.get("model", settings.groq_model))
 
         if settings.groq_api_key:
             prompt = load_prompt("supervisor")
-            response = self._client().invoke(
+            response = self._client(model_name).invoke(
                 [SystemMessage(content=prompt), HumanMessage(content=user_request)]
             )
             payload = parse_json_object(str(response.content))

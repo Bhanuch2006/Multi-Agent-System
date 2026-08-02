@@ -21,35 +21,68 @@ def _fallback_review(state: AgentState) -> dict[str, object]:
     findings: list[str] = []
     suggestions: list[str] = []
 
+    category_scores = {
+        "correctness": 100,
+        "security": 100,
+        "architecture": 100,
+        "documentation": 100,
+        "testing": 100,
+    }
+
     if 'SECRET_KEY = os.getenv("JWT_SECRET")' not in security_file:
         findings.append("JWT secret is not loaded from the environment.")
         suggestions.append("Read JWT_SECRET from the environment and fail fast when it is missing.")
+        category_scores["security"] -= 30
 
     if "passlib" not in project_files.get("requirements.txt", ""):
         findings.append("Password hashing dependency is missing.")
         suggestions.append("Add passlib[bcrypt] to requirements.")
+        category_scores["security"] -= 10
 
     if "README.md" not in project_files:
         findings.append("Documentation was not generated yet.")
         suggestions.append("Add a README in the documentation step.")
+        category_scores["documentation"] -= 25
 
-    score = 100 - len(findings) * 10
-    approved = score >= 90
+    if not any(path.startswith("tests/") for path in project_files):
+        findings.append("No tests were generated.")
+        suggestions.append("Generate at least one health test and run it in the testing pipeline.")
+        category_scores["testing"] -= 35
+
+    if "FastAPI" not in project_files.get("app/main.py", ""):
+        findings.append("Main application wiring looks incomplete.")
+        category_scores["architecture"] -= 20
+
+    overall_score = int(
+        (
+            category_scores["correctness"] * 0.4
+            + category_scores["security"] * 0.25
+            + category_scores["architecture"] * 0.15
+            + category_scores["documentation"] * 0.1
+            + category_scores["testing"] * 0.1
+        )
+    )
+    approved = overall_score >= 90
+    if approved and not suggestions:
+        suggestions.append("No blocking issues found.")
+
     return {
-        "score": score,
+        "overall_score": overall_score,
         "approved": approved,
+        "category_scores": category_scores,
         "findings": findings,
-        "suggestions": suggestions or (["No blocking issues found."] if approved else suggestions),
+        "suggestions": suggestions,
     }
 
 
 @dataclass
 class ReviewerAgent:
-    def _client(self) -> ChatGroq:
-        return ChatGroq(model=settings.groq_model, groq_api_key=settings.groq_api_key, temperature=0)
+    def _client(self, model_name: str) -> ChatGroq:
+        return ChatGroq(model=model_name, groq_api_key=settings.groq_api_key, temperature=0)
 
     def run(self, state: AgentState) -> dict[str, object]:
         project_files = dict(state.get("project_files", {}))
+        model_name = str(state.get("model", settings.groq_model))
         start = perf_counter()
         start_time = datetime.utcnow()
         if settings.groq_api_key:
@@ -66,7 +99,7 @@ class ReviewerAgent:
                 },
                 indent=2,
             )
-            response = self._client().invoke([SystemMessage(content=prompt), HumanMessage(content=payload_text)])
+            response = self._client(model_name).invoke([SystemMessage(content=prompt), HumanMessage(content=payload_text)])
             payload = parse_json_object(str(response.content))
         else:
             payload = _fallback_review(state)
@@ -75,7 +108,6 @@ class ReviewerAgent:
         end_time = datetime.utcnow()
 
         review = ReviewOutput.model_validate(payload)
-
         messages = []
         if not review.approved:
             # send a high-priority message to FixAgent/Coder
@@ -86,7 +118,7 @@ class ReviewerAgent:
                     priority="high",
                     message="Issues found: " + "; ".join(review.findings),
                     timestamp=start_time,
-                ).model_dump()
+                ).model_dump(mode="json")
             )
 
         metrics = AgentMetrics(
@@ -96,7 +128,7 @@ class ReviewerAgent:
             tokens=0,
             cost=0.0,
             latency=end - start,
-        ).model_dump()
+        ).model_dump(mode="json")
 
         return {
             "review": review.model_dump(),

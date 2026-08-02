@@ -14,6 +14,9 @@ class JobRecord:
     status: str = "queued"
     current_agent: str = "Supervisor"
     progress: int = 0
+    graph: dict[str, Any] | None = None
+    node_status: dict[str, str] = field(default_factory=dict)
+    checkpoints: int = 0
     result: dict[str, Any] | None = None
     error: str | None = None
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

@@ -44,7 +44,7 @@ def persist_artifacts(
     project_dir.mkdir(parents=True, exist_ok=True)
     write_project_files(project_dir, project_files)
     (artifact_dir / "bundle.md").write_text(bundle_markdown, encoding="utf-8")
-    (artifact_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    (artifact_dir / "metadata.json").write_text(json.dumps(metadata, indent=2, default=str), encoding="utf-8")
     return artifact_dir
 
 

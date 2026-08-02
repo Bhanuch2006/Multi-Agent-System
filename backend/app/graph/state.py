@@ -4,14 +4,20 @@ from typing import Any, TypedDict
 
 
 class AgentState(TypedDict, total=False):
+    job_id: str
     user_request: str
     project_name: str
+    graph: dict[str, Any]
+    node_id: str
+    task_hint: str
     task_list: list[str]
     architecture: dict[str, Any]
     research_notes: list[str]
     research_sources: list[str]
     project_files: dict[str, str]
     review: dict[str, Any]
+    execution: dict[str, Any]
+    testing: dict[str, Any]
     documentation: str
     revision_count: int
     artifact_path: str
@@ -27,3 +33,4 @@ class AgentState(TypedDict, total=False):
     status: str
     messages: list[dict]
     metrics: list[dict]
+    node_status: dict[str, str]
